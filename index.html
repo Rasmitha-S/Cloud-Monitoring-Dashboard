@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- ✏️ CHANGE 1: Edit the browser tab title -->
+<title>My Cloud Monitor — Dashboard</title>
+
+<!-- ✏️ CHANGE 2: To use a different font, go to fonts.google.com, pick one, paste its link here -->
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oxanium:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #060a10;
+    --panel: #0b1220;
+    --border: #1a2a3a;
+    /* ✏️ CHANGE 3: Your main accent color. Try #7c3aed (purple) #f97316 (orange) #10b981 (green) */
+    --accent: #00e5ff;
+    --green: #00ff88;
+    --yellow: #ffcc00;
+    --red: #ff3366;
+    --orange: #ff8c00;
+    --text: #c8dae8;
+    --dim: #4a6070;
+    --glow: 0 0 12px rgba(0,229,255,0.4);
+    --glow-green: 0 0 12px rgba(0,255,136,0.4);
+    --glow-red: 0 0 12px rgba(255,51,102,0.4);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Oxanium', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,0.012) 2px, rgba(0,229,255,0.012) 4px);
+    pointer-events:none; z-index:0;
+  }
+  header {
+    position: sticky; top:0; z-index:100;
+    background: rgba(6,10,16,0.95);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+    padding: 0 28px;
+    height: 58px;
+    display: flex; align-items: center; gap:20px;
+  }
+  .logo {
+    font-size: 1.25rem; font-weight:800; letter-spacing:.08em;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    white-space:nowrap;
+  }
+  .logo span { color: var(--text); font-weight:300; }
+  .header-time {
+    margin-left:auto;
+    font-family:'Share Tech Mono', monospace;
+    font-size:.78rem; color: var(--dim);
+    display:flex; align-items:center; gap:16px;
+  }
+  .status-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow: var(--glow-green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .region-badge {
+    background: rgba(0,229,255,.08);
+    border: 1px solid rgba(0,229,255,.2);
+    border-radius:3px; padding:2px 8px;
+    font-size:.7rem; color: var(--accent); letter-spacing:.05em;
+  }
+  nav { display:flex; gap:4px; margin-left:24px; }
+  nav button {
+    background:none; border:none; cursor:pointer;
+    color: var(--dim); font-family:'Oxanium',sans-serif;
+    font-size:.78rem; padding:4px 12px; border-radius:3px;
+    transition: all .2s; letter-spacing:.04em;
+  }
+  nav button.active, nav button:hover {
+    color: var(--accent); background: rgba(0,229,255,.08);
+  }
+  main { padding: 20px 24px; position:relative; z-index:1; }
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .sum-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    position:relative; overflow:hidden;
+    animation: fadeUp .5s ease both;
+  }
+  .sum-card::after {
+    content:''; position:absolute; top:0; left:0;
+    width:3px; height:100%; background: var(--accent);
+  }
+  .sum-card.warn::after { background: var(--yellow); }
+  .sum-card.crit::after { background: var(--red); }
+  .sum-card.ok::after { background: var(--green); }
+  .sum-label { font-size:.66rem; color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+  .sum-val { font-size:1.9rem; font-weight:800; line-height:1; margin-bottom:4px; }
+  .sum-val.accent { color:var(--accent); text-shadow:var(--glow); }
+  .sum-val.green { color:var(--green); text-shadow:var(--glow-green); }
+  .sum-val.red { color:var(--red); text-shadow:var(--glow-red); }
+  .sum-val.yellow { color:var(--yellow); }
+  .sum-sub { font-size:.7rem; color:var(--dim); }
+  .sum-sub .up { color:var(--green); } .sum-sub .dn { color:var(--red); }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .grid-2 { display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:16px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
+  .grid-equal { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .panel-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); }
+  .panel-meta { font-size:.65rem; color:var(--dim); font-family:'Share Tech Mono',monospace; }
+  .panel-body { padding: 16px 18px; }
+  .chart-wrap { height: 140px; position:relative; overflow:hidden; }
+  svg.sparkline { width:100%; height:100%; }
+  .chart-labels {
+    display:flex; justify-content:space-between;
+    padding: 4px 2px 0;
+    font-size:.6rem; color:var(--dim); font-family:'Share Tech Mono',monospace;
+  }
+  .gauge-row { display:flex; align-items:center; gap:14px; margin-bottom:10px; }
+  .gauge-row:last-child { margin-bottom:0; }
+  .gauge-label { font-size:.72rem; color:var(--text); min-width:90px; }
+  .gauge-bar { flex:1; height:6px; background: rgba(255,255,255,.06); border-radius:2px; overflow:hidden; }
+  .gauge-fill {
+    height:100%; border-radius:2px;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    transition: width 1s cubic-bezier(.4,0,.2,1);
+  }
+  .gauge-fill.warn { background: linear-gradient(90deg, var(--yellow), var(--orange)); }
+  .gauge-fill.crit { background: linear-gradient(90deg, var(--orange), var(--red)); }
+  .gauge-pct { font-family:'Share Tech Mono',monospace; font-size:.7rem; min-width:36px; text-align:right; color:var(--accent); }
+  .gauge-pct.warn { color:var(--yellow); }
+  .gauge-pct.crit { color:var(--red); }
+  table { width:100%; border-collapse:collapse; font-size:.75rem; }
+  th { text-align:left; padding:6px 10px; font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); border-bottom:1px solid var(--border); }
+  td { padding:8px 10px; border-bottom:1px solid rgba(26,42,58,.5); color:var(--text); font-family:'Share Tech Mono',monospace; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background: rgba(0,229,255,.03); }
+  .badge {
+    display:inline-block; padding:2px 7px; border-radius:2px;
+    font-size:.62rem; font-family:'Oxanium',sans-serif; font-weight:600; letter-spacing:.05em;
+  }
+  .badge-ok { background:rgba(0,255,136,.12); color:var(--green); }
+  .badge-warn { background:rgba(255,204,0,.12); color:var(--yellow); }
+  .badge-err { background:rgba(255,51,102,.12); color:var(--red); }
+  .badge-stop { background:rgba(255,140,0,.12); color:var(--orange); }
+  .donut-wrap { display:flex; align-items:center; gap:20px; }
+  .donut-legend { display:flex; flex-direction:column; gap:8px; }
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:.7rem; }
+  .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .alert-list { display:flex; flex-direction:column; gap:6px; }
+  .alert-item {
+    display:flex; align-items:flex-start; gap:10px;
+    background: rgba(255,255,255,.02);
+    border-radius:4px; padding:9px 12px;
+    border-left:3px solid var(--dim);
+    font-size:.72rem;
+  }
+  .alert-item.warn { border-left-color: var(--yellow); }
+  .alert-item.crit { border-left-color: var(--red); }
+  .alert-item.ok { border-left-color: var(--green); }
+  .alert-icon { font-size:.9rem; margin-top:1px; flex-shrink:0; }
+  .alert-msg { color:var(--text); }
+  .alert-time { font-family:'Share Tech Mono',monospace; font-size:.63rem; color:var(--dim); margin-top:2px; }
+  .region-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .region-tile {
+    background: rgba(0,229,255,.04);
+    border: 1px solid rgba(0,229,255,.12);
+    border-radius:4px; padding:10px 12px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .region-name { font-size:.7rem; color:var(--text); }
+  .region-ping { font-family:'Share Tech Mono',monospace; font-size:.7rem; color:var(--green); }
+  .region-ping.slow { color:var(--yellow); }
+  .mini-row { display:flex; gap:10px; flex-wrap:wrap; }
+  .mini-metric {
+    flex:1; min-width:90px;
+    background:rgba(0,229,255,.04); border:1px solid var(--border);
+    border-radius:4px; padding:10px 12px;
+    text-align:center;
+  }
+  .mini-val { font-size:1.3rem; font-weight:700; color:var(--accent); line-height:1; }
+  .mini-lbl { font-size:.62rem; color:var(--dim); text-transform:uppercase; letter-spacing:.07em; margin-top:3px; }
+  @media(max-width:900px) {
+    .grid-2,.grid-3,.grid-equal { grid-template-columns:1fr; }
+    .summary-strip { grid-template-columns:1fr 1fr; }
+  }
+  @media(max-width:500px) { .summary-strip { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <!-- ✏️ CHANGE 4: Replace "Cloud" and "Pulse" with your own name -->
+  <div class="logo">Cloud<span>Pulse</span></div>
+  <!-- ✏️ CHANGE 5: Rename nav tabs -->
+  <nav>
+    <button class="active">Overview</button>
+    <button>Compute</button>
+    <button>Storage</button>
+    <button>Network</button>
+    <button>Alerts</button>
+  </nav>
+  <div class="header-time">
+    <div class="status-dot"></div>
+    <span>LIVE</span>
+    <!-- ✏️ CHANGE 6: Update your region -->
+    <span class="region-badge">us-east-1</span>
+    <span id="clock">--:--:--</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ✏️ CHANGE 7: Edit these 4 summary card numbers/labels -->
+  <div class="summary-strip">
+    <div class="sum-card ok" style="animation-delay:.05s">
+      <div class="sum-label">Instances Running</div>
+      <div class="sum-val green">24</div>
+      <div class="sum-sub"><span class="up">↑ 3</span> from yesterday</div>
+    </div>
+    <div class="sum-card" style="animation-delay:.1s">
+      <div class="sum-label">Avg CPU Load</div>
+      <div class="sum-val accent">62%</div>
+      <div class="sum-sub"><span class="dn">↑ 8%</span> last 5 min</div>
+    </div>
+    <div class="sum-card warn" style="animation-delay:.15s">
+      <div class="sum-label">Active Alerts</div>
+      <div class="sum-val yellow">3</div>
+      <div class="sum-sub">2 warnings · 1 critical</div>
+    </div>
+    <div class="sum-card" style="animation-delay:.2s">
+      <div class="sum-label">Monthly Cost</div>
+      <div class="sum-val accent">$1,842</div>
+      <div class="sum-sub"><span class="up">↓ 12%</span> vs last month</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel" style="animation: fadeUp .5s .2s ease both">
+      <div class="panel-header">
+        <span class="panel-title">CPU Utilization — Last 60 min</span>
+        <span class="panel-meta" id="cpu-live">-- %</span>
+      </div>
+      <div class="panel-body">
+        <div class="chart-wrap">
+          <svg class="sparkline" id="cpu-svg" viewBox="0 0 600 140" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="chart-labels" id="cpu-labels"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="animation: fadeUp .5s .25s ease both">
+      <div class="panel-header">
+        <span class="panel-title">Resource Usage</span>
+        <span class="panel-meta">All Instances</span>
+      </div>
+      <div class="panel-body">
+        <!-- ✏️ CHANGE 8: Edit starting % values in style="width:XX%" -->
+        <div class="gauge-row">
+          <div class="gauge-label">CPU</div>
+          <div class="gauge-bar"><div class="gauge-fill" id="g-cpu" style="width:62%"></div></div>
+          <div class="gauge-pct" id="gp-cpu">62%</div>
+        </div>
+        <div class="gauge-row">
+          <div class="gauge-label">Memory</div>
+          <div class="gauge-bar"><div class="gauge-fill warn" id="g-mem" style="width:78%"></div></div>
+          <div class="gauge-pct warn" id="gp-mem">78%</div>
+        </div>
+        <div class="gauge-row">
+          <div class="gauge-label">Disk I/O</div>
+          <div class="gauge-bar"><div class="gauge-fill" id="g-io" style="width:45%"></div></div>
+          <div class="gauge-pct" id="gp-io">45%</div>
+        </div>
+        <div class="gauge-row">
+          <div class="gauge-label">Network Out</div>
+          <div class="gauge-bar"><div class="gauge-fill" id="g-net" style="width:33%"></div></div>
+          <div class="gauge-pct" id="gp-net">33%</div>
+        </div>
+        <div class="gauge-row">
+          <div class="gauge-label">Storage</div>
+          <div class="gauge-bar"><div class="gauge-fill crit" id="g-stor" style="width:91%"></div></div>
+          <div class="gauge-pct crit" id="gp-stor">91%</div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="mini-row">
+            <div class="mini-metric"><div class="mini-val" id="m-req">1.2k</div><div class="mini-lbl">Req/s</div></div>
+            <div class="mini-metric"><div class="mini-val" id="m-lat" style="color:var(--green)">42ms</div><div class="mini-lbl">Latency</div></div>
+            <div class="mini-metric"><div class="mini-val" id="m-err" style="color:var(--red)">0.3%</div><div class="mini-lbl">Error Rate</div></div>
+            <div class="mini-metric"><div class="mini-val" id="m-up" style="color:var(--green)">99.9%</div><div class="mini-lbl">Uptime</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="panel" style="animation: fadeUp .5s .3s ease both; grid-column: span 2">
+      <div class="panel-header">
+        <span class="panel-title">Running Services</span>
+        <span class="panel-meta">24 total</span>
+      </div>
+      <div class="panel-body" style="padding:0">
+        <table>
+          <thead>
+            <tr>
+              <th>Service</th><th>Instance ID</th><th>Region</th>
+              <th>CPU</th><th>Mem</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="svc-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" style="animation: fadeUp .5s .35s ease both">
+      <div class="panel-header">
+        <span class="panel-title">Traffic Sources</span>
+        <span class="panel-meta">Today</span>
+      </div>
+      <div class="panel-body">
+        <div class="donut-wrap" style="flex-direction:column; gap:12px;">
+          <svg width="130" height="130" viewBox="0 0 130 130" style="margin:0 auto">
+            <circle cx="65" cy="65" r="50" fill="none" stroke="rgba(255,255,255,.04)" stroke-width="18"/>
+            <circle cx="65" cy="65" r="50" fill="none" stroke="var(--accent)" stroke-width="18" stroke-dasharray="188 126" stroke-dashoffset="-31" stroke-linecap="butt" style="filter:drop-shadow(0 0 6px rgba(0,229,255,.5))"/>
+            <circle cx="65" cy="65" r="50" fill="none" stroke="var(--green)" stroke-width="18" stroke-dasharray="75 239" stroke-dashoffset="-219" stroke-linecap="butt"/>
+            <circle cx="65" cy="65" r="50" fill="none" stroke="var(--yellow)" stroke-width="18" stroke-dasharray="50 264" stroke-dashoffset="-294"/>
+            <text x="65" y="61" text-anchor="middle" font-family="Oxanium" font-size="18" font-weight="800" fill="var(--accent)">59%</text>
+            <text x="65" y="77" text-anchor="middle" font-family="Oxanium" font-size="10" fill="var(--dim)">API</text>
+          </svg>
+          <!-- ✏️ CHANGE 9: Update traffic labels -->
+          <div class="donut-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div><span>API Calls — 59%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div><span>Web Traffic — 24%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div><span>Internal — 17%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-equal">
+    <div class="panel" style="animation: fadeUp .5s .4s ease both">
+      <div class="panel-header">
+        <span class="panel-title">Memory — Last 60 min</span>
+        <span class="panel-meta" id="mem-live">-- %</span>
+      </div>
+      <div class="panel-body">
+        <div class="chart-wrap" style="height:110px">
+          <svg class="sparkline" id="mem-svg" viewBox="0 0 600 110" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="chart-labels" id="mem-labels"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="animation: fadeUp .5s .45s ease both">
+      <div class="panel-header">
+        <span class="panel-title">Network I/O — Last 60 min</span>
+        <span class="panel-meta" id="net-live">-- Mbps</span>
+      </div>
+      <div class="panel-body">
+        <div class="chart-wrap" style="height:110px">
+          <svg class="sparkline" id="net-svg" viewBox="0 0 600 110" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="chart-labels" id="net-labels"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel" style="animation: fadeUp .5s .5s ease both">
+      <div class="panel-header">
+        <span class="panel-title">Alert Log</span>
+        <span class="panel-meta" id="alert-count">3 active</span>
+      </div>
+      <div class="panel-body">
+        <div class="alert-list" id="alert-list"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="animation: fadeUp .5s .55s ease both">
+      <div class="panel-header">
+        <span class="panel-title">Region Health</span>
+        <span class="panel-meta">6 active regions</span>
+      </div>
+      <div class="panel-body">
+        <!-- ✏️ CHANGE 10: Update region names -->
+        <div class="region-grid">
+          <div class="region-tile"><div class="region-name">us-east-1</div><div class="region-ping" id="r1">12ms</div></div>
+          <div class="region-tile"><div class="region-name">us-west-2</div><div class="region-ping" id="r2">28ms</div></div>
+          <div class="region-tile"><div class="region-name">eu-west-1</div><div class="region-ping slow" id="r3">89ms</div></div>
+          <div class="region-tile"><div class="region-name">ap-south-1</div><div class="region-ping" id="r4">54ms</div></div>
+          <div class="region-tile"><div class="region-name">ap-east-1</div><div class="region-ping" id="r5">63ms</div></div>
+          <div class="region-tile"><div class="region-name">sa-east-1</div><div class="region-ping slow" id="r6">112ms</div></div>
+        </div>
+        <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border); display:flex; gap:16px; font-size:.68rem; color:var(--dim)">
+          <span><span style="color:var(--green)">●</span> &lt;50ms Healthy</span>
+          <span><span style="color:var(--yellow)">●</span> 50–100ms Degraded</span>
+          <span><span style="color:var(--red)">●</span> &gt;100ms Critical</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+function tick() {
+  document.getElementById('clock').textContent = new Date().toTimeString().slice(0,8);
+}
+tick(); setInterval(tick, 1000);
+
+function makeSparkData(base, range, points=60) {
+  const d=[]; let v=base;
+  for(let i=0;i<points;i++){
+    v += (Math.random()-0.5)*range;
+    v = Math.max(5, Math.min(99, v));
+    d.push(v);
+  }
+  return d;
+}
+
+function renderSparkline(svgId, data, color, gColor, W=600, H=140) {
+  const svg = document.getElementById(svgId);
+  if(!svg) return;
+  const min=Math.min(...data)-5, max=Math.max(...data)+5;
+  const xStep = W/(data.length-1);
+  const toY = v => H - ((v-min)/(max-min))*(H*0.85) - H*0.05;
+  const pts = data.map((v,i)=>`${i*xStep},${toY(v)}`).join(' ');
+  const fillPts = `0,${H} ${pts} ${(data.length-1)*xStep},${H}`;
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="g_${svgId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${gColor}" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="${gColor}" stop-opacity="0.01"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${fillPts}" fill="url(#g_${svgId})"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"
+      style="filter:drop-shadow(0 0 4px ${color})"/>
+    <circle cx="${(data.length-1)*xStep}" cy="${toY(data[data.length-1])}" r="3"
+      fill="${color}" style="filter:drop-shadow(0 0 5px ${color})"/>`;
+}
+
+function renderLabels(elId, count=6) {
+  const el=document.getElementById(elId); if(!el) return;
+  const now=new Date(); const labels=[];
+  for(let i=count;i>=0;i--){
+    labels.push(new Date(now-i*10*60000).toTimeString().slice(0,5));
+  }
+  el.innerHTML = labels.map(l=>`<span>${l}</span>`).join('');
+}
+
+// ✏️ CHANGE 11: Edit base values e.g. makeSparkData(62, 12) starts charts at ~62%
+let cpuData = makeSparkData(62, 12);
+let memData = makeSparkData(78, 8);
+let netData = makeSparkData(40, 18);
+
+function drawAll() {
+  renderSparkline('cpu-svg', cpuData, '#00e5ff', '#00e5ff', 600, 140);
+  renderSparkline('mem-svg', memData, '#ffcc00', '#ffcc00', 600, 110);
+  renderSparkline('net-svg', netData, '#00ff88', '#00ff88', 600, 110);
+  renderLabels('cpu-labels');
+  renderLabels('mem-labels');
+  renderLabels('net-labels');
+}
+drawAll();
+
+function nudge(arr, base, range) {
+  let v = arr[arr.length-1] + (Math.random()-0.48)*range;
+  v = Math.max(5,Math.min(99,v));
+  arr.push(v); arr.shift(); return v;
+}
+
+function updateGauge(id, pctId, val, warnAt=75, critAt=88) {
+  const fill=document.getElementById(id);
+  const pct=document.getElementById(pctId);
+  if(!fill||!pct) return;
+  fill.style.width=val+'%';
+  fill.className='gauge-fill'+(val>=critAt?' crit':val>=warnAt?' warn':'');
+  pct.textContent=Math.round(val)+'%';
+  pct.className='gauge-pct'+(val>=critAt?' crit':val>=warnAt?' warn':'');
+}
+
+setInterval(()=>{
+  const cpu=nudge(cpuData,62,10);
+  const mem=nudge(memData,78,6);
+  const net=nudge(netData,40,14);
+  drawAll();
+  document.getElementById('cpu-live').textContent=Math.round(cpu)+'%';
+  document.getElementById('mem-live').textContent=Math.round(mem)+'%';
+  document.getElementById('net-live').textContent=Math.round(net)+' Mbps';
+  updateGauge('g-cpu','gp-cpu',cpu);
+  updateGauge('g-mem','gp-mem',mem,75,88);
+  const io=Math.max(5,Math.min(95,parseFloat(document.getElementById('gp-io').textContent)+((Math.random()-.5)*4)));
+  const nto=Math.max(5,Math.min(95,parseFloat(document.getElementById('gp-net').textContent)+((Math.random()-.5)*3)));
+  updateGauge('g-io','gp-io',io);
+  updateGauge('g-net','gp-net',nto);
+  const r=document.getElementById('m-req');
+  if(r) r.textContent=(Math.random()*0.6+0.9).toFixed(1)+'k';
+  const lat=document.getElementById('m-lat');
+  if(lat){const ms=Math.round(Math.random()*30+28); lat.textContent=ms+'ms'; lat.style.color=ms>50?'var(--yellow)':'var(--green)';}
+  const pings=[12,28,89,54,63,112];
+  for(let i=1;i<=6;i++){
+    const el=document.getElementById('r'+i); if(!el) continue;
+    const v=Math.max(5,pings[i-1]+(Math.random()-.5)*10|0);
+    el.textContent=v+'ms';
+    el.className='region-ping'+(v>80?' slow':'');
+  }
+},3000);
+// ✏️ CHANGE 12: Edit service names, regions, cpu, mem, status (ok/warn/crit/stop)
+const services = [
+  {name:'web-server-01', id:'i-0a1b2c3d', region:'us-east-1',  cpu:45, mem:60, status:'ok'},
+  {name:'api-gateway',   id:'i-1e2f3a4b', region:'us-east-1',  cpu:78, mem:82, status:'warn'},
+  {name:'db-primary',    id:'i-2b3c4d5e', region:'us-west-2',  cpu:21, mem:55, status:'ok'},
+  {name:'cache-cluster', id:'i-3f4a5b6c', region:'us-east-1',  cpu:92, mem:88, status:'crit'},
+  {name:'ml-worker-01',  id:'i-4d5e6f7a', region:'ap-south-1', cpu:67, mem:71, status:'ok'},
+  {name:'logging-svc',   id:'i-5e6f7a8b', region:'eu-west-1',  cpu:14, mem:39, status:'stop'},
+];
+function renderTable() {
+  const tb=document.getElementById('svc-table'); if(!tb) return;
+  tb.innerHTML=services.map(s=>{
+    const bm={ok:'badge-ok',warn:'badge-warn',crit:'badge-err',stop:'badge-stop'};
+    const lm={ok:'RUNNING',warn:'WARNING',crit:'CRITICAL',stop:'STOPPED'};
+    const cc=s.cpu>85?'color:var(--red)':s.cpu>70?'color:var(--yellow)':'color:var(--accent)';
+    const mc=s.mem>85?'color:var(--red)':s.mem>70?'color:var(--yellow)':'';
+    return `<tr>
+      <td style="font-family:'Oxanium',sans-serif;font-weight:600;color:var(--text)">${s.name}</td>
+      <td>${s.id}</td><td>${s.region}</td>
+      <td style="${cc}">${s.cpu}%</td>
+      <td style="${mc}">${s.mem}%</td>
+      <td><span class="badge ${bm[s.status]}">${lm[s.status]}</span></td>
+    </tr>`;
+  }).join('');
+}
+renderTable();
+
+// ✏️ CHANGE 13: Edit alert messages (type = 'crit', 'warn', or 'ok')
+const alerts = [
+  {type:'crit', icon:'⚠', msg:'cache-cluster CPU exceeded 90% threshold', time:'2 min ago'},
+  {type:'warn', icon:'⚡', msg:'api-gateway memory usage at 82% — approaching limit', time:'11 min ago'},
+  {type:'warn', icon:'💾', msg:'Storage volume vol-08d9a nearing capacity (91%)', time:'34 min ago'},
+  {type:'ok',   icon:'✓', msg:'web-server-02 auto-scaled — new instance launched', time:'1 hr ago'},
+  {type:'ok',   icon:'✓', msg:'db-replica health check passed — replication in sync', time:'2 hr ago'},
+];
+const al=document.getElementById('alert-list');
+if(al) al.innerHTML=alerts.map(a=>`
+  <div class="alert-item ${a.type}">
+    <div class="alert-icon">${a.icon}</div>
+    <div>
+      <div class="alert-msg">${a.msg}</div>
+      <div class="alert-time">${a.time}</div>
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>
